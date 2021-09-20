@@ -9,13 +9,6 @@
         "description": "The location where the resources will be deployed."
       }
     },
-    "sqlDBName": {
-      "type": "string",
-      "defaultValue": "cta-sql-db-001",
-      "metadata": {
-        "description": "The name of the SQL Database."
-      }
-    },
     "vaultName": {
       "type": "string",
       "metadata": {
@@ -83,7 +76,7 @@
             }
           },
           "variables": {
-            "sqlServerName": "[concat('sql-', uniqueString(resourceGroup().id, 'sql'))]"
+            "sqlServerName": "[concat('cta-sql-', uniqueString(resourceGroup().id, 'sql'))]"
           },
           "resources": [
             {
@@ -103,32 +96,7 @@
               "value": "[reference(variables('sqlServerName')).fullyQualifiedDomainName]"
             }
           }
-        },
-        "resources": [
-            {
-            "type": "databases",
-            "apiVersion": "2020-08-01-preview",
-            "name": "[parameters('sqlDBName')]",
-            "location": "[parameters('location')]",
-            "sku": {
-                "name": "Standard",
-                "tier": "Standard",
-                "capacity": 10
-          },
-          "dependsOn": [
-            "[resourceId('Microsoft.Sql/servers', concat(parameters('sqlDBName')))]"
-          ],
-          "properties": {
-                "collation": "SQL_Latin1_General_CP1_CI_AS",
-                "maxSizeBytes": 1073741824,
-                "catalogCollation": "SQL_Latin1_General_CP1_CI_AS",
-                "zoneRedundant": false,
-                "readScale": "Disabled",
-                "requestedBackupStorageRedundancy": "Geo",
-                "isLedgerOn": false
-                }
-            }
-        ]
+        }
       }
     }
   ],
