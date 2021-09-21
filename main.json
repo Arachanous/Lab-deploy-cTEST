@@ -1,0 +1,303 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "keyVaultName": {
+        "type": "string",
+        "defaultValue": "cta-kv-",
+        "metadata": {
+          "description": "Specifies the name of the key vault."
+        }
+      },
+      "location": {
+        "type": "string",
+        "defaultValue": "[resourceGroup().location]",
+        "metadata": {
+          "description": "Specifies the Azure location where the key vault should be created."
+        }
+      },
+      "webAppName": {
+        "type": "string",
+        "defaultValue": "[concat('cta-webApp-', uniqueString(resourceGroup().id))]",
+        "minLength": 2,
+        "metadata": {
+          "description": "Web app name."
+        }
+      },
+      "aspsku": {
+        "type": "string",
+        "defaultValue": "F1",
+        "metadata": {
+          "description": "The SKU of App Service Plan."
+        }
+      },
+      "linuxFxVersion": {
+        "type": "string",
+        "defaultValue": "DOTNETCORE|3.0",
+        "metadata": {
+          "description": "The Runtime stack of current web app"
+        }
+      },
+      "repoUrl": {
+        "type": "string",
+        "defaultValue": " ",
+        "metadata": {
+          "description": "Optional Git Repo URL"
+        }
+      },
+      "enabledForDeployment": {
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies whether Azure Virtual Machines are permitted to retrieve certificates stored as secrets from the key vault."
+        }
+      },
+      "enabledForDiskEncryption": {
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies whether Azure Disk Encryption is permitted to retrieve secrets from the vault and unwrap keys."
+        }
+      },
+      "enabledForTemplateDeployment": {
+        "type": "bool",
+        "defaultValue": false,
+        "allowedValues": [
+          true,
+          false
+        ],
+        "metadata": {
+          "description": "Specifies whether Azure Resource Manager is permitted to retrieve secrets from the key vault."
+        }
+      },
+      "tenantId": {
+        "type": "string",
+        "defaultValue": "[subscription().tenantId]",
+        "metadata": {
+          "description": "Specifies the Azure Active Directory tenant ID that should be used for authenticating requests to the key vault. Get it by using Get-AzSubscription cmdlet."
+        }
+      },
+      "objectId": {
+        "type": "string",
+        "defaultValue": "75623417-9ce7-481a-982b-edae07cccb5e",
+        "metadata": {
+          "description": "Specifies the object ID of a user, service principal or security group in the Azure Active Directory tenant for the vault. The object ID must be unique for the list of access policies. Get it by using Get-AzADUser or Get-AzADServicePrincipal cmdlets."
+        }
+      },
+      "keysPermissions": {
+        "type": "array",
+        "defaultValue": [
+          "list"
+        ],
+        "metadata": {
+          "description": "Specifies the permissions to keys in the vault. Valid values are: all, encrypt, decrypt, wrapKey, unwrapKey, sign, verify, get, list, create, update, import, delete, backup, restore, recover, and purge."
+        }
+      },
+      "secretsPermissions": {
+        "type": "array",
+        "defaultValue": [
+          "list"
+        ],
+        "metadata": {
+          "description": "Specifies the permissions to secrets in the vault. Valid values are: all, get, list, set, delete, backup, restore, recover, and purge."
+        }
+      },
+      "skuName": {
+        "type": "string",
+        "defaultValue": "Standard",
+        "allowedValues": [
+          "Standard",
+          "Premium"
+        ],
+        "metadata": {
+          "description": "Specifies whether the key vault is a standard vault or a premium vault."
+        }
+      },
+      "secretName": {
+        "type": "string",
+        "metadata": {
+          "description": "Specifies the name of the secret that you want to create."
+        }
+      },
+      "serverName": {
+      "type": "string",
+      "defaultValue": "[uniqueString('sql-cta', resourceGroup().id)]",
+      "metadata": {
+        "description": "The name of the SQL logical server."
+      }
+    },
+    "sqlDBName": {
+      "type": "string",
+      "defaultValue": "db-sql-cta",
+      "metadata": {
+        "description": "The name of the SQL Database."
+      }
+    },
+    "administratorLogin": {
+      "type": "string",
+      "defaultValue": "localsqladmin",
+      "metadata": {
+        "description": "The administrator username of the SQL logical server."
+      }
+    },
+    "administratorLoginPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The administrator password of the SQL logical server."
+      }
+    },
+      "secretValue": {
+        "type": "securestring",
+        "metadata": {
+          "description": "Specifies the value of the secret that you want to create."
+        }
+      }
+    },
+    "variables": {
+        "appServicePlanPortalName": "[concat('AppServicePlan-', parameters('webAppName'))]"
+        
+    },
+
+    "resources": [
+      {
+        "type": "Microsoft.KeyVault/vaults",
+        "apiVersion": "2019-09-01",
+        "name": "[parameters('keyVaultName')]",
+        "location": "[parameters('location')]",
+        "properties": {
+          "enabledForDeployment": "[parameters('enabledForDeployment')]",
+          "enabledForDiskEncryption": "[parameters('enabledForDiskEncryption')]",
+          "enabledForTemplateDeployment": "[parameters('enabledForTemplateDeployment')]",
+          "tenantId": "[parameters('tenantId')]",
+          "accessPolicies": [
+            {
+              "objectId": "[parameters('objectId')]",
+              "tenantId": "[parameters('tenantId')]",
+              "permissions": {
+                "keys": "[parameters('keysPermissions')]",
+                "secrets": "[parameters('secretsPermissions')]"
+              }
+            }
+          ],
+          "sku": {
+            "name": "[parameters('skuName')]",
+            "family": "A"
+          },
+          "networkAcls": {
+            "defaultAction": "Allow",
+            "bypass": "AzureServices"
+          }
+        }
+      },
+      {
+        "type": "Microsoft.KeyVault/vaults/secrets",
+        "apiVersion": "2019-09-01",
+        "name": "[concat(parameters('keyVaultName'), '/', parameters('secretName'))]",
+        "location": "[parameters('location')]",
+        "dependsOn": [
+          "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+        ],
+        "properties": {
+          "value": "[parameters('secretValue')]"
+        }
+    
+    },
+    
+    {
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2020-02-02-preview",
+      "name": "[parameters('serverName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "administratorLogin": "[parameters('administratorLogin')]",
+        "administratorLoginPassword": "[parameters('administratorLoginPassword')]",
+        "publicNetworkAccess": "Enabled",
+        "minimalTlsVersion": "1.2"
+      },
+      "resources": [
+        {
+          "type": "databases",
+          "apiVersion": "2020-08-01-preview",
+          "name": "[parameters('sqlDBName')]",
+          "location": "[parameters('location')]",
+          "sku": {
+            "name": "Standard",
+            "tier": "Standard",
+            "capacity": 10
+          },
+          "dependsOn": [
+            "[resourceId('Microsoft.Sql/servers', concat(parameters('serverName')))]"
+          ],
+          "properties": {
+                "collation": "SQL_Latin1_General_CP1_CI_AS",
+                "maxSizeBytes": 1073741824,
+                "catalogCollation": "SQL_Latin1_General_CP1_CI_AS",
+                "zoneRedundant": false,
+                "readScale": "Disabled",
+                "requestedBackupStorageRedundancy": "Geo",
+                "isLedgerOn": false
+                }
+            }
+        ]
+    },
+        {
+        "type": "Microsoft.Web/serverfarms",
+        "apiVersion": "2020-06-01",
+        "name": "[variables('appServicePlanPortalName')]",
+        "location": "[parameters('location')]",
+        "sku": {
+          "name": "[parameters('aspsku')]"
+        },
+        "kind": "linux",
+        "properties": {
+          "reserved": true
+        }
+      },
+      {
+        "type": "Microsoft.Web/sites",
+        "apiVersion": "2020-06-01",
+        "name": "[parameters('webAppName')]",
+        "location": "[parameters('location')]",
+  
+        "dependsOn": [
+          "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanPortalName'))]"
+        ],
+        "properties": {
+          "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('appServicePlanPortalName'))]",
+          "siteConfig": {
+            "numberOfWorkers": 1,
+            "linuxFxVersion": "[parameters('linuxFxVersion')]",
+            "alwaysOn": false,
+            "http20Enabled": false
+           
+           },
+          "resources": [
+            {
+              "condition": "[contains(parameters('repoUrl'),'http')]",
+              "type": "sourcecontrols",
+              "apiVersion": "2020-06-01",
+              "name": "web",
+              "location": "[parameters('location')]",
+              
+              "dependsOn": [
+                "[resourceId('Microsoft.Web/sites', parameters('webAppName'))]"
+              ],
+              "properties": {
+                "repoUrl": "[parameters('repoUrl')]",
+                "branch": "master",
+                "isManualIntegration": true
+              }
+            }
+          ]
+        }
+      }
+    ]
+}
